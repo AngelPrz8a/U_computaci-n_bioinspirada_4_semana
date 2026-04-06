@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACO — Simulador de distribución rural</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e2a;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text:#e8eaf0;--muted:#7b8099;
+  --accent:#3ecf8e;--accent2:#6c8fff;--warn:#f0a050;--danger:#e05555;
+  --mono:'JetBrains Mono',monospace;--sans:'Sora',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;display:flex;flex-direction:column;}
+header{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex-shrink:0;}
+header h1{font-size:14px;font-weight:600;letter-spacing:.02em;}
+header p{font-size:11px;color:var(--muted);margin-left:auto;font-family:var(--mono);}
+.layout{display:grid;grid-template-columns:290px 1fr 270px;flex:1;overflow:hidden;min-height:0;}
+
+/* ── LEFT ── */
+.panel-params{border-right:1px solid var(--border);padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+.block{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:12px;}
+.block-title{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.block-title .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.param-group{display:flex;flex-direction:column;gap:10px;}
+.param-row{display:flex;flex-direction:column;gap:4px;}
+.param-label{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text);}
+.param-label .val{font-family:var(--mono);font-size:11px;min-width:30px;text-align:right;}
+.val-green{color:var(--accent);}
+.val-warn{color:var(--warn);}
+.val-blue{color:var(--accent2);}
+.param-hint{font-size:9px;color:var(--muted);line-height:1.4;}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--bg3);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 5px rgba(62,207,142,.4);cursor:pointer;}
+input[type=range].rng-warn::-webkit-slider-thumb{background:var(--warn);box-shadow:0 0 5px rgba(240,160,80,.4);}
+input[type=range].rng-blue::-webkit-slider-thumb{background:var(--accent2);box-shadow:0 0 5px rgba(108,143,255,.4);}
+input[type=number]{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 8px;width:100%;outline:none;transition:border-color .15s;}
+input[type=number]:focus{border-color:var(--accent);}
+.gen-btn{width:100%;padding:8px;background:var(--bg3);color:var(--accent2);border:1px solid var(--border2);border-radius:7px;font-family:var(--sans);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;}
+.gen-btn:hover{border-color:var(--accent2);background:rgba(108,143,255,.08);}
+.run-btn{width:100%;padding:10px;background:var(--accent);color:#0d0f14;border:none;border-radius:9px;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}
+.run-btn:hover{background:#5de0a8;}.run-btn:active{transform:scale(.98);}
+.run-btn:disabled{background:var(--bg3);color:var(--muted);cursor:not-allowed;transform:none;}
+.reset-btn{width:100%;padding:7px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:7px;font-family:var(--sans);font-size:11px;cursor:pointer;transition:all .15s;}
+.reset-btn:hover{border-color:var(--danger);color:var(--danger);}
+.scenario-wrap{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.sc-btn{background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:var(--sans);font-size:10px;padding:7px 4px;cursor:pointer;transition:all .15s;text-align:center;line-height:1.3;}
+.sc-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+.sc-btn.active{border-color:var(--accent2);color:var(--accent2);background:rgba(108,143,255,.08);}
+.comm-list{display:flex;flex-direction:column;gap:3px;max-height:170px;overflow-y:auto;margin-top:6px;}
+.comm-item{display:flex;align-items:center;gap:5px;padding:3px 6px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);}
+.comm-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.comm-name{font-size:10px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.comm-dem{font-family:var(--mono);font-size:10px;color:var(--warn);min-width:22px;text-align:right;}
+.comm-vuln-tag{font-size:8px;color:var(--warn);background:rgba(240,160,80,.1);border-radius:3px;padding:1px 4px;flex-shrink:0;}
+
+/* ── CENTER ── */
+.panel-viz{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.viz-header{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.viz-tabs{display:flex;gap:3px;}
+.tab{padding:4px 11px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid transparent;color:var(--muted);background:transparent;font-family:var(--sans);transition:all .15s;}
+.tab.active{background:var(--bg3);border-color:var(--border2);color:var(--text);}
+.tab:hover:not(.active){color:var(--text);}
+.iter-badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.viz-body{flex:1;position:relative;overflow:hidden;min-height:0;}
+canvas{position:relative;top:0;left:0;width:100%;height:100%;}
+#canvas-graph,
+#canvas-overlay{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+}
+
+/* ── PLAYER ── */
+.player-bar{border-top:1px solid var(--border);padding:9px 14px;background:var(--bg2);display:flex;flex-direction:column;gap:7px;flex-shrink:0;}
+.player-controls{display:flex;align-items:center;gap:7px;}
+.pbtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s;flex-shrink:0;font-family:var(--mono);}
+.pbtn:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2);}
+.pbtn:disabled{opacity:.3;cursor:not-allowed;}
+.pbtn.playing{background:rgba(62,207,142,.1);border-color:var(--accent);color:var(--accent);}
+.player-track{flex:1;display:flex;flex-direction:column;gap:3px;}
+.player-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);}
+#player-range{height:4px;}
+#player-range::-webkit-slider-thumb{background:var(--accent2);box-shadow:0 0 5px rgba(108,143,255,.5);}
+.speed-row{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted);}
+.spd{padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--mono);font-size:9px;cursor:pointer;transition:all .15s;}
+.spd.active{background:rgba(108,143,255,.1);border-color:var(--accent2);color:var(--accent2);}
+
+/* ── RIGHT ── */
+.panel-results{border-left:1px solid var(--border);padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;}
+.section-title{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.metric-card{background:var(--bg3);border-radius:9px;padding:9px 11px;border:1px solid var(--border);}
+.metric-label{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+.metric-value{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1.1;}
+.mv-green{color:var(--accent);}.mv-warn{color:var(--warn);}.mv-blue{color:var(--accent2);}
+.metric-sub{font-size:9px;color:var(--muted);margin-top:1px;}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.pb-wrap{background:var(--bg);border-radius:3px;height:4px;overflow:hidden;margin-top:5px;}
+.pb{height:100%;border-radius:3px;transition:width .3s ease;width:0%;}
+.pb-green{background:var(--accent);}.pb-warn{background:var(--warn);}
+.route-display{background:var(--bg3);border-radius:9px;padding:9px 11px;border:1px solid var(--border);}
+.route-nodes{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.rn{background:var(--bg);border:1px solid var(--border2);border-radius:3px;font-family:var(--mono);font-size:10px;padding:2px 5px;}
+.rn-depot{color:var(--accent2);}.rn-default{color:var(--accent);}.rn-vuln{color:var(--warn);border-color:rgba(240,160,80,.3);}
+.chart-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 11px;}
+#canvas-chart{position:relative;
+  display:block;
+  width:100%;
+  height:100px;}
+.log-box{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;max-height:120px;overflow-y:auto;}
+.log-box span{display:block;}
+.log-ok{color:var(--accent);}.log-info{color:var(--accent2);}.log-warn{color:var(--warn);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;transition:background .3s;}
+.status-dot.running{background:var(--warn);box-shadow:0 0 5px var(--warn);animation:pulse .8s infinite;}
+.status-dot.done{background:var(--accent);box-shadow:0 0 5px var(--accent);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-dot"></div>
+  <h1>ACO — Simulador de distribución rural</h1>
+  <p>Computación Bioinspirada · NRC 777</p>
+</header>
+
+<div class="layout">
+
+<!-- ══════ PANEL IZQUIERDO ══════ -->
+<aside class="panel-params">
+
+  <!-- BLOQUE A: Comunidades y demanda -->
+  <div class="block">
+    <div class="block-title">
+      <div class="dot" style="background:var(--warn)"></div>
+      Comunidades y demanda
+    </div>
+    <div class="param-group">
+
+      <div class="param-row">
+        <div class="param-label">
+          Número de comunidades
+          <span class="val val-warn" id="v-ncom">9</span>
+        </div>
+        <input type="range" class="rng-warn" id="s-ncom" min="4" max="20" step="1" value="9"
+          oninput="document.getElementById('v-ncom').textContent=this.value">
+        <div class="param-hint">Comunidades a atender, sin contar el depósito.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          Demanda mínima por comunidad
+          <span class="val val-warn" id="v-dmin">8</span>
+        </div>
+        <input type="range" class="rng-warn" id="s-dmin" min="2" max="30" step="1" value="8"
+          oninput="document.getElementById('v-dmin').textContent=this.value">
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          Demanda máxima por comunidad
+          <span class="val val-warn" id="v-dmax">25</span>
+        </div>
+        <input type="range" class="rng-warn" id="s-dmax" min="10" max="60" step="1" value="25"
+          oninput="document.getElementById('v-dmax').textContent=this.value">
+        <div class="param-hint">Cada comunidad recibe una demanda aleatoria dentro de este rango al generar el mapa.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">
+          Capacidad del vehículo
+          <span class="val val-warn" id="v-cap">70</span>
+        </div>
+        <input type="range" class="rng-warn" id="s-cap" min="20" max="250" step="5" value="70"
+          oninput="document.getElementById('v-cap').textContent=this.value">
+        <div class="param-hint">Si la demanda total supera la capacidad, el vehículo hace múltiples viajes desde el depósito.</div>
+      </div>
+
+      <button class="gen-btn" onclick="generarMapa()">⟳  Generar mapa aleatorio</button>
+    
+      
+    </div>
+  </div>
+
+  <!-- BLOQUE B: Parámetros del algoritmo -->
+  <div class="block">
+    <div class="block-title">
+      <div class="dot" style="background:var(--accent)"></div>
+      Parámetros del algoritmo
+    </div>
+    <div class="param-group">
+
+      <div class="param-row">
+        <div class="param-label">Hormigas (N)<span class="val val-green" id="v-ants">20</span></div>
+        <input type="range" id="s-ants" min="5" max="80" step="5" value="20"
+          oninput="document.getElementById('v-ants').textContent=this.value">
+        <div class="param-hint">Agentes por iteración.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">α — peso feromona<span class="val val-green" id="v-alpha">1.0</span></div>
+        <input type="range" id="s-alpha" min="0.1" max="5" step="0.1" value="1.0"
+          oninput="document.getElementById('v-alpha').textContent=parseFloat(this.value).toFixed(1)">
+        <div class="param-hint">Mayor α → el sistema sigue más el rastro histórico.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">β — peso heurístico<span class="val val-green" id="v-beta">2.0</span></div>
+        <input type="range" id="s-beta" min="0.1" max="5" step="0.1" value="2.0"
+          oninput="document.getElementById('v-beta').textContent=parseFloat(this.value).toFixed(1)">
+        <div class="param-hint">Mayor β → la distancia inmediata domina la decisión.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">ρ — evaporación<span class="val val-green" id="v-rho">0.10</span></div>
+        <input type="range" id="s-rho" min="0.01" max="0.9" step="0.01" value="0.10"
+          oninput="document.getElementById('v-rho').textContent=parseFloat(this.value).toFixed(2)">
+        <div class="param-hint">Mayor ρ → olvido más rápido, más exploración.</div>
+      </div>
+
+      <div class="param-row">
+        <div class="param-label">Iteraciones máx.</div>
+        <input type="number" id="n-iters" value="80" min="10" max="300" step="10">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BLOQUE C: Escenario vial -->
+
+
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <button class="run-btn" id="btn-run" onclick="runSimulation()">▶  Ejecutar simulación</button>
+    <button class="reset-btn" onclick="resetAll(false)">Restablecer todo</button>
+  </div>
+
+</aside>
+
+<!-- ══════ PANEL CENTRAL ══════ -->
+<main class="panel-viz">
+  <div class="viz-header">
+    <div class="viz-tabs">
+      <button class="tab active" onclick="switchTab('graph',this)">Grafo</button>
+      <button class="tab" onclick="switchTab('feromona',this)">Feromona</button>
+      <button class="tab" onclick="switchTab('agentes',this)">Agentes</button>
+    </div>
+    <span class="iter-badge">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="iter-label">Listo para simular</span>
+    </span>
+  </div>
+
+  <div class="viz-body">
+    <canvas id="canvas-graph"></canvas>
+    <canvas id="canvas-overlay"></canvas>
+  </div>
+
+  <!-- REPRODUCTOR DE ITERACIONES -->
+  <div class="player-bar">
+    <div class="player-controls">
+      <button class="pbtn" id="p-first" onclick="playerGo(0)"        title="Primera iteración" disabled>⏮</button>
+      <button class="pbtn" id="p-prev"  onclick="playerStep(-1)"      title="Anterior"          disabled>◀</button>
+      <button class="pbtn" id="p-play"  onclick="playerToggle()"      title="Reproducir/Pausar" disabled>▶</button>
+      <button class="pbtn" id="p-next"  onclick="playerStep(1)"       title="Siguiente"         disabled>▶|</button>
+      <button class="pbtn" id="p-last"  onclick="playerGo(99999)"     title="Última iteración"  disabled>⏭</button>
+      <div class="player-track">
+        <input type="range" id="player-range" min="0" max="0" step="1" value="0"
+          oninput="playerGo(parseInt(this.value))">
+        <div class="player-labels">
+          <span id="pl-cur">—</span>
+          <span id="pl-total">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="speed-row">
+      Velocidad:
+      <button class="spd"        onclick="setSpeed(2000,this)">0.5×</button>
+      <button class="spd active" onclick="setSpeed(700,this)">1×</button>
+      <button class="spd"        onclick="setSpeed(250,this)">2×</button>
+      <button class="spd"        onclick="setSpeed(60,this)">5×</button>
+      <button class="spd"        onclick="setSpeed(10,this)">máx</button>
+    </div>
+  </div>
+</main>
+
+<!-- ══════ PANEL DERECHO ══════ -->
+<aside class="panel-results">
+
+  <div>
+    <div class="section-title">Indicadores</div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Costo f</div>
+        <div class="metric-value mv-green" id="m-cost">—</div>
+        <div class="metric-sub">función objetivo</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Distancia</div>
+        <div class="metric-value mv-blue" id="m-dist">—</div>
+        <div class="metric-sub">unidades</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cobertura</div>
+        <div class="metric-value mv-green" id="m-cov">—</div>
+        <div class="pb-wrap"><div class="pb pb-green" id="pb-cov"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Mejora</div>
+        <div class="metric-value mv-warn" id="m-imp">—</div>
+        <div class="metric-sub">vs. iteración 1</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">Vulnerables cubiertas</div>
+    <div class="metric-card">
+      <div class="metric-value mv-warn" id="m-vuln" style="font-size:15px;">—</div>
+      <div class="pb-wrap" style="margin-top:6px;"><div class="pb pb-warn" id="pb-vuln"></div></div>
+      <div class="metric-sub" style="margin-top:3px;">Comunidades de alta prioridad alimentaria</div>
+    </div>
+  </div>
+
+    <div class="param-row">
+        <div class="param-label">
+            % de comunidades vulnerables
+            <span class="val val-warn" id="v-vuln">30</span>
+        </div>
+        <input
+            type="range"
+            class="rng-warn"
+            id="s-vuln"
+            min="5"
+            max="100"
+            step="5"
+            value="30"
+            oninput="document.getElementById('v-vuln').textContent=this.value"
+            onchange="generarMapa()"
+        >
+        <div class="param-hint">Al cambiar este valor se vuelve a generar el mapa.</div>
+    </div>
+
+    <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">
+            Comunidades generadas
+        </div>
+        <div class="comm-list" id="comm-list">
+            <span style="font-size:10px;color:var(--muted)">Genera un mapa para ver la lista.</span>
+        </div>
+    </div>
+
+  <div class="route-display">
+    <div class="section-title" style="margin-bottom:4px;">Ruta óptima</div>
+    <div class="route-nodes" id="route-nodes">
+      <span style="color:var(--muted);font-size:11px;">Ejecuta la simulación para ver la ruta.</span>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title" style="margin-bottom:5px;">Convergencia del algoritmo</div>
+    <canvas id="canvas-chart"></canvas>  
+  </div>
+
+  <div>
+    <div class="section-title">Registro</div>
+    <div class="log-box" id="log-box">
+      <span class="log-info">Sistema listo.</span>
+    </div>
+  </div>
+
+</aside>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════
+let N = 1;
+let COORDS_RAW = [[50,50]];
+let DEMANDA    = [0];
+let NOMBRES    = ['Depósito'];
+let VULNERABLES = new Set();
+let matricesViales = {};
+
+let escenarioActual = 'normal';
+let tabActual = 'graph';
+let simulando = false;
+let resultados = null;
+let historial  = [];
+
+// Reproductor
+let snapshots    = [];
+let playerIdx    = 0;
+let playerTimer  = null;
+let playerSpeed  = 700;
+let playerPlaying = false;
+
+// ════════════════════════════════════════════════
+// GENERACIÓN ALEATORIA DE MAPA
+// ════════════════════════════════════════════════
+const PREFIJOS  = ['Vereda','Vereda','Corregimiento','Caserío','Inspección'];
+const APELLIDOS = ['La Esperanza','El Progreso','San José','Los Pinos','La Palma',
+  'El Rosal','Agua Fría','La Montaña','El Cedro','Los Almendros','El Refugio',
+  'La Colina','San Miguel','El Paraíso','Los Naranjos','El Bosque','La Vega',
+  'El Retiro','San Pedro','La Floresta'];
+
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [b[i],b[j]]=[b[j],b[i]];
+  }
+  return b;
+}
+
+function clamp(v,min,max){
+  return Math.max(min,Math.min(max,v));
+}
+
+function cloneMatrix(m){
+  return m.map(row=>[...row]);
+}
+
+function createSymmetricMatrix(defaultValue=1){
+  return Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>i===j?0:defaultValue));
+}
+
+function generarEscenariosViales(){
+  const normal = createSymmetricMatrix(1);
+  const deterioro = createSymmetricMatrix(1);
+  const demanda = createSymmetricMatrix(1);
+  const adverso = createSymmetricMatrix(1);
+
+  for(let i=1;i<N;i++){
+    for(let j=i+1;j<N;j++){
+      const base=Math.random();
+      let valDet=1;
+      let valAdv=1;
+      let valDem=1;
+
+      if(base<0.28){
+        valDet=1.25+Math.random()*1.2;
+      }
+      if(base<0.18){
+        valAdv=1.8+Math.random()*1.5;
+      } else if(base<0.48){
+        valAdv=1.2+Math.random()*0.9;
+      }
+      if(base<0.20){
+        valDem=1.05+Math.random()*0.25;
+      }
+
+      deterioro[i][j]=deterioro[j][i]=parseFloat(valDet.toFixed(2));
+      demanda[i][j]=demanda[j][i]=parseFloat(valDem.toFixed(2));
+      adverso[i][j]=adverso[j][i]=parseFloat(Math.max(valDet,valAdv).toFixed(2));
+    }
+  }
+
+  matricesViales = {normal,deterioro,demanda,adverso};
+}
+
+function generarMapa() {
+  const nCom = parseInt(document.getElementById('s-ncom').value);
+  const dMin = parseInt(document.getElementById('s-dmin').value);
+  const dMax = Math.max(parseInt(document.getElementById('s-dmax').value), dMin + 2);
+
+  document.getElementById('s-dmax').value = dMax;
+  document.getElementById('v-dmax').textContent = dMax;
+
+  N = nCom + 1;
+  COORDS_RAW = [[50,50]];
+  DEMANDA    = [0];
+  NOMBRES    = ['Depósito'];
+
+const porcentajeVulnerables = parseInt(document.getElementById('s-vuln').value) / 100;
+const nVulnerables = Math.max(1, Math.round(nCom * porcentajeVulnerables));
+
+VULNERABLES = new Set();
+
+const indicesComunidades = [...Array(nCom)].map((_, i) => i + 1);
+shuffle(indicesComunidades)
+  .slice(0, nVulnerables)
+  .forEach(i => VULNERABLES.add(i));
+
+  const aps = shuffle([...APELLIDOS]);
+  const usados = new Set();
+
+  for(let i=0;i<nCom;i++){
+    let x=50,y=50,ok=false;
+    let tries=0;
+    while(!ok && tries<200){
+      x=8+Math.random()*84;
+      y=8+Math.random()*84;
+      ok=true;
+      for(const c of COORDS_RAW){
+        const dx=c[0]-x,dy=c[1]-y;
+        if(Math.sqrt(dx*dx+dy*dy)<10){ ok=false; break; }
+      }
+      tries++;
+    }
+    if(!ok){
+      const ang=(Math.PI*2*i)/Math.max(1,nCom);
+      x=50+Math.cos(ang)*28;
+      y=50+Math.sin(ang)*28;
+    }
+
+    COORDS_RAW.push([clamp(x,8,92),clamp(y,8,92)]);
+    DEMANDA.push(dMin + Math.floor(Math.random()*(dMax-dMin+1)));
+
+    let nombre = `${PREFIJOS[i%PREFIJOS.length]} ${aps[i%aps.length]}`;
+    if(usados.has(nombre)) nombre += ` ${i+1}`;
+    usados.add(nombre);
+    NOMBRES.push(nombre);
+  }
+
+  generarEscenariosViales();
+  resetAll(true);
+  renderCommList();
+  log(`Mapa generado: ${nCom} comunidades, ${VULNERABLES.size} vulnerables. Demanda ${dMin}–${dMax}.`,'info');
+  redrawCurrent();
+}
+
+function renderCommList(){
+  const list = document.getElementById('comm-list');
+  if(!list) return;
+
+  list.innerHTML = '';
+  for(let i=1;i<N;i++){
+    const color = VULNERABLES.has(i) ? '#f0a050' : '#3ecf8e';
+    const el = document.createElement('div');
+    el.className = 'comm-item';
+    el.innerHTML = `
+      <div class="comm-dot" style="background:${color}"></div>
+      <span class="comm-name" title="${NOMBRES[i]}">${NOMBRES[i]}</span>
+      <span class="comm-dem">${DEMANDA[i]}</span>
+      ${VULNERABLES.has(i) ? '<span class="comm-vuln-tag">↑ prioritaria</span>' : ''}
+    `;
+    list.appendChild(el);
+  }
+}
+
+// ════════════════════════════════════════════════
+// ESCENARIO VIAL
+// ════════════════════════════════════════════════
+function buildVial(sc){
+  if(!matricesViales[sc]) generarEscenariosViales();
+  return matricesViales[sc] || matricesViales.normal || createSymmetricMatrix(1);
+}
+
+function setScenario(sc,btn){
+  escenarioActual=sc;
+  document.querySelectorAll('.sc-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+
+  if(resultados || snapshots.length){
+    resetAll(true);
+    log(`Escenario cambiado a: ${btn.textContent.trim()}. Vuelve a ejecutar la simulación.`, 'warn');
+  } else {
+    log(`Escenario: ${btn.textContent.trim()}`,'info');
+  }
+  redrawCurrent();
+}
+
+// ════════════════════════════════════════════════
+// CANVAS
+// ════════════════════════════════════════════════
+const gCvs=document.getElementById('canvas-graph'),gCtx=gCvs.getContext('2d');
+const oCvs=document.getElementById('canvas-overlay'),oCtx=oCvs.getContext('2d');
+
+function resize(){
+  const vb=document.querySelector('.viz-body');
+  const W=vb.clientWidth,H=vb.clientHeight;
+  [gCvs,oCvs].forEach(c=>{c.width=W;c.height=H;});
+  redrawCurrent();
+}
+window.addEventListener('resize',resize);
+
+function nPos(i,w,h){
+  const p=52;
+  return [p+(COORDS_RAW[i][0]/100)*(w-p*2), p+(COORDS_RAW[i][1]/100)*(h-p*2)];
+}
+
+function drawBaseEdges(vial,tauM){
+  const W=gCvs.width,H=gCvs.height;
+  for(let i=0;i<N;i++){
+    for(let j=i+1;j<N;j++){
+      const [x1,y1]=nPos(i,W,H),[x2,y2]=nPos(j,W,H);
+      const v=vial[i][j]||1;
+      let al=tabActual==='graph'?0.08:0.05;
+      let lw=tabActual==='graph'?0.7:0.5;
+      if(tabActual==='feromona' && tauM){
+        const t=tauM[i][j]||0;
+        al=Math.min(.88,(t/1.4)*.84+.04);
+        lw=al*4.2+.35;
+      }
+      gCtx.beginPath();
+      gCtx.moveTo(x1,y1);
+      gCtx.lineTo(x2,y2);
+      gCtx.strokeStyle=v>2?`rgba(224,85,85,${al})`:v>1.3?`rgba(240,160,80,${al})`:`rgba(108,143,255,${al})`;
+      gCtx.lineWidth=lw;
+      gCtx.stroke();
+    }
+  }
+}
+
+function drawBestRoute(ruta,alpha=0.85){
+  if(!ruta||ruta.length<2) return;
+  const W=gCvs.width,H=gCvs.height;
+  gCtx.save();
+  gCtx.setLineDash([]);
+  for(let k=0;k<ruta.length-1;k++){
+    const [x1,y1]=nPos(ruta[k],W,H),[x2,y2]=nPos(ruta[k+1],W,H);
+    gCtx.beginPath();
+    gCtx.moveTo(x1,y1);
+    gCtx.lineTo(x2,y2);
+    gCtx.strokeStyle=`rgba(62,207,142,${alpha})`;
+    gCtx.lineWidth=2.1;
+    gCtx.stroke();
+
+    const ang=Math.atan2(y2-y1,x2-x1),mx=(x1+x2)/2,my=(y1+y2)/2;
+    gCtx.beginPath();
+    gCtx.moveTo(mx,my);
+    gCtx.lineTo(mx-9*Math.cos(ang-.4),my-9*Math.sin(ang-.4));
+    gCtx.moveTo(mx,my);
+    gCtx.lineTo(mx-9*Math.cos(ang+.4),my-9*Math.sin(ang+.4));
+    gCtx.strokeStyle=`rgba(62,207,142,${Math.max(0.3,alpha-0.2)})`;
+    gCtx.lineWidth=1.2;
+    gCtx.stroke();
+  }
+  gCtx.restore();
+}
+
+function drawAgentPaths(agentPaths){
+  if(!agentPaths||!agentPaths.length) return;
+  const W=gCvs.width,H=gCvs.height;
+  agentPaths.forEach((path,ai)=>{
+    if(!path||path.length<2) return;
+    const hue=(ai*53)%360;
+    for(let k=0;k<path.length-1;k++){
+      const [x1,y1]=nPos(path[k],W,H),[x2,y2]=nPos(path[k+1],W,H);
+      gCtx.beginPath();
+      gCtx.moveTo(x1,y1);
+      gCtx.lineTo(x2,y2);
+      gCtx.strokeStyle=`hsla(${hue},80%,65%,.55)`;
+      gCtx.lineWidth=1.35;
+      gCtx.stroke();
+    }
+    const last=path[path.length-1];
+    const [lx,ly]=nPos(last,W,H);
+    gCtx.beginPath();
+    gCtx.arc(lx,ly,4,0,Math.PI*2);
+    gCtx.fillStyle=`hsla(${hue},80%,65%,.92)`;
+    gCtx.fill();
+  });
+}
+
+function drawNodes(ruta){
+  const W=gCvs.width,H=gCvs.height;
+  for(let i=0;i<N;i++){
+    const [x,y]=nPos(i,W,H);
+    const isD=i===0,isV=VULNERABLES.has(i);
+    const inR=!!(ruta&&ruta.includes(i));
+    const r=isD?13:9;
+
+    if(inR||isV){
+      gCtx.beginPath();
+      gCtx.arc(x,y,r+5,0,Math.PI*2);
+      gCtx.fillStyle=isD?'rgba(108,143,255,.1)':isV?'rgba(240,160,80,.1)':'rgba(62,207,142,.08)';
+      gCtx.fill();
+    }
+
+    gCtx.beginPath();
+    gCtx.arc(x,y,r,0,Math.PI*2);
+    gCtx.fillStyle=isD?'#6c8fff':isV?'#f0a050':inR?'#3ecf8e':'#1a1e2a';
+    gCtx.fill();
+    gCtx.strokeStyle=isD?'#8aabff':isV?'#f8c080':inR?'#5de0a8':'rgba(255,255,255,.12)';
+    gCtx.lineWidth=1.3;
+    gCtx.stroke();
+
+    gCtx.fillStyle=isD||inR?'#0d0f14':'#7b8099';
+    gCtx.font=`${isD?'600 10px':'500 9px'} 'Sora',sans-serif`;
+    gCtx.textAlign='center';
+    gCtx.textBaseline='middle';
+    gCtx.fillText(i===0?'D':String(i),x,y);
+
+    const tag=(NOMBRES[i]||'').split(' ').slice(-1)[0];
+    gCtx.fillStyle=inR?'#c4c8d8':'#363b52';
+    gCtx.font="9px 'Sora',sans-serif";
+    gCtx.fillText(tag.length>11?tag.slice(0,10)+'…':tag,x,y+r+8);
+
+    if(i>0){
+      gCtx.fillStyle=isV?'rgba(240,160,80,.75)':'rgba(62,207,142,.45)';
+      gCtx.font="8px 'JetBrains Mono',monospace";
+      gCtx.fillText(`d:${DEMANDA[i]}`,x,y+r+17);
+    }
+  }
+}
+
+function drawScene(ruta, tauM, agentPaths){
+  if(N<2) return;
+  const W=gCvs.width,H=gCvs.height;
+  gCtx.clearRect(0,0,W,H);
+  oCtx.clearRect(0,0,W,H);
+
+  const vial=buildVial(escenarioActual);
+  drawBaseEdges(vial,tauM);
+
+  if(tabActual==='agentes'){
+    drawAgentPaths(agentPaths);
+    drawBestRoute(ruta,0.35);
+  } else {
+    drawBestRoute(ruta,0.85);
+  }
+
+  drawNodes(ruta);
+}
+
+function redrawCurrent(){
+  if(!gCvs.width || !gCvs.height) return;
+  if(snapshots.length){
+    const s=snapshots[playerIdx];
+    drawScene(s.bestRuta,s.tau,tabActual==='agentes'?s.agentPaths:null);
+    drawChart(historial.slice(0,playerIdx+1));
+  } else {
+    drawScene(resultados?.ruta,resultados?.feromona,tabActual==='agentes'?resultados?.agentPaths:null);
+    drawChart(historial);
+  }
+}
+
+// ════════════════════════════════════════════════
+// ALGORITMO ACO
+// ════════════════════════════════════════════════
+function cDist(i,j,vial){
+  const dx=COORDS_RAW[i][0]-COORDS_RAW[j][0],dy=COORDS_RAW[i][1]-COORDS_RAW[j][1];
+  return Math.sqrt(dx*dx+dy*dy)*(vial[i][j]||1);
+}
+function buildDM(vial){
+  const d=[];
+  for(let i=0;i<N;i++){
+    d[i]=[];
+    for(let j=0;j<N;j++) d[i][j]=i!==j?cDist(i,j,vial):0;
+  }
+  return d;
+}
+function buildH(dm){
+  const h=[];
+  for(let i=0;i<N;i++){
+    h[i]=[];
+    for(let j=0;j<N;j++) h[i][j]=i!==j&&dm[i][j]>0?1/dm[i][j]:0;
+  }
+  return h;
+}
+
+function evalRuta(ruta,dm){
+  if(ruta.length<2) return Infinity;
+  let total=0;
+  for(let k=0;k<ruta.length-1;k++) total+=dm[ruta[k]][ruta[k+1]];
+  let penCob=0;
+  for(let i=1;i<N;i++) if(!ruta.includes(i)) penCob+=100;
+  const penEq=[...VULNERABLES].filter(v=>!ruta.includes(v)).length*150;
+  const penDesp=Math.max(0,total-200)*0.5;
+  return total+penCob+penEq+penDesp;
+}
+
+function buildRuta(tau,h,alpha,beta,cap){
+  let cur=0,ruta=[0],noV=new Set([...Array(N-1)].map((_,i)=>i+1)),carga=0;
+  while(noV.size>0){
+    let cands=[...noV].filter(j=>carga+DEMANDA[j]<=cap);
+    if(!cands.length){
+      ruta.push(0);cur=0;carga=0;
+      cands=[...noV].filter(j=>DEMANDA[j]<=cap);
+      if(!cands.length){
+        cands=[...noV];
+      }
+    }
+    const nums=cands.map(j=>Math.pow(tau[cur][j]||.001,alpha)*Math.pow(h[cur][j]||.001,beta));
+    const s=nums.reduce((a,b)=>a+b,0);
+    let chosen=cands[0];
+    if(s>0){
+      let r=Math.random()*s,acc=0;
+      for(let k=0;k<cands.length;k++){
+        acc+=nums[k];
+        if(acc>=r){chosen=cands[k];break;}
+      }
+    } else {
+      chosen=cands[Math.floor(Math.random()*cands.length)];
+    }
+    ruta.push(chosen);
+    carga+=DEMANDA[chosen];
+    noV.delete(chosen);
+    cur=chosen;
+  }
+  if(ruta[ruta.length-1]!==0) ruta.push(0);
+  return ruta;
+}
+
+function cloneTau(t){
+  return t.map(r=>[...r]);
+}
+
+async function runSimulation(){
+  if(simulando||N<3) return;
+  simulando=true;
+  snapshots=[];
+
+  const btn=document.getElementById('btn-run');
+  btn.disabled=true;
+  btn.textContent='Simulando…';
+  document.getElementById('status-dot').className='status-dot running';
+
+  const nAnts=parseInt(document.getElementById('s-ants').value);
+  const alpha=parseFloat(document.getElementById('s-alpha').value);
+  const beta=parseFloat(document.getElementById('s-beta').value);
+  const rho=parseFloat(document.getElementById('s-rho').value);
+  const maxIter=parseInt(document.getElementById('n-iters').value);
+  const cap=parseInt(document.getElementById('s-cap').value);
+  const vial=buildVial(escenarioActual);
+  const dm=buildDM(vial),h=buildH(dm);
+
+  let tau=Array.from({length:N},()=>new Array(N).fill(0.1));
+  let bestRuta=null,bestCost=Infinity,lastAgentPaths=[];
+  historial=[];
+
+  log(`ACO: ${nAnts} hormigas | α=${alpha} β=${beta} ρ=${rho}`,'info');
+  log(`${N-1} comunidades | ${VULNERABLES.size} vulnerables | cap=${cap}`);
+
+  const chunk=Math.max(1,Math.ceil(maxIter/60));
+
+  for(let it=0;it<maxIter;it++){
+    const rutas=[],costs=[],agentPaths=[];
+    for(let k=0;k<nAnts;k++){
+      const r=buildRuta(tau,h,alpha,beta,cap);
+      rutas.push(r);
+      costs.push(evalRuta(r,dm));
+      if(k<8) agentPaths.push([...r]);
+    }
+    lastAgentPaths=agentPaths.map(r=>[...r]);
+
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++) tau[i][j]*=(1-rho);
+    const minC=Math.min(...costs);
+    for(let k=0;k<nAnts;k++){
+      if(costs[k]===minC){
+        const dep=1/costs[k];
+        for(let s=0;s<rutas[k].length-1;s++){
+          const a=rutas[k][s],b=rutas[k][s+1];
+          tau[a][b]+=dep;
+          tau[b][a]+=dep;
+        }
+      }
+    }
+    if(minC<bestCost){
+      bestCost=minC;
+      bestRuta=[...rutas[costs.indexOf(minC)]];
+    }
+    historial.push(bestCost);
+
+    snapshots.push({
+      iter:it+1,
+      tau:cloneTau(tau),
+      bestRuta:bestRuta?[...bestRuta]:null,
+      bestCost,
+      agentPaths:lastAgentPaths.map(r=>[...r])
+    });
+
+    if((it+1)%chunk===0||it===maxIter-1){
+      document.getElementById('iter-label').textContent=`Iteración ${it+1} / ${maxIter}`;
+      drawScene(bestRuta,tau,tabActual==='agentes'?lastAgentPaths:null);
+      drawChart(historial);
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+
+  resultados={ruta:bestRuta,feromona:tau,cost:bestCost,agentPaths:lastAgentPaths.map(r=>[...r])};
+
+  let td=0;
+  for(let k=0;k<bestRuta.length-1;k++) td+=dm[bestRuta[k]][bestRuta[k+1]];
+  const vs=new Set(bestRuta);
+  const nC=vs.size-1,pC=Math.round(nC/(N-1)*100);
+  const vC=[...VULNERABLES].filter(v=>vs.has(v));
+  const pV=VULNERABLES.size?Math.round(vC.length/VULNERABLES.size*100):100;
+  const imp=historial.length>1?Math.round((historial[0]-historial[historial.length-1])/historial[0]*100):0;
+
+  document.getElementById('m-cost').textContent=bestCost.toFixed(1);
+  document.getElementById('m-dist').textContent=td.toFixed(1);
+  document.getElementById('m-cov').textContent=pC+'%';
+  document.getElementById('pb-cov').style.width=pC+'%';
+  document.getElementById('m-imp').textContent=imp+'%';
+  document.getElementById('m-vuln').textContent=`${vC.length} / ${VULNERABLES.size}`;
+  document.getElementById('pb-vuln').style.width=pV+'%';
+
+  const rn=document.getElementById('route-nodes');
+  rn.innerHTML='';
+  bestRuta.forEach((n,i)=>{
+    const sp=document.createElement('span');
+    sp.className='rn '+(n===0?'rn-depot':VULNERABLES.has(n)?'rn-vuln':'rn-default');
+    sp.textContent=n===0?'D':String(n);
+    sp.title=NOMBRES[n]||'';
+    rn.appendChild(sp);
+    if(i<bestRuta.length-1){
+      const a=document.createElement('span');
+      a.style.cssText='color:var(--muted);font-size:9px;';
+      a.textContent='→';
+      rn.appendChild(a);
+    }
+  });
+
+  log(`Completado. f = ${bestCost.toFixed(1)}`,'ok');
+  log(`Cobertura: ${nC}/${N-1} (${pC}%) | Vulnerables: ${vC.length}/${VULNERABLES.size}`);
+  log(`Mejora: ${imp}%`);
+
+  const pr=document.getElementById('player-range');
+  pr.max=snapshots.length-1;
+  pr.value=snapshots.length-1;
+  playerIdx=snapshots.length-1;
+  updatePLabels();
+  setPlayerEnabled(true);
+
+  document.getElementById('status-dot').className='status-dot done';
+  document.getElementById('iter-label').textContent=`Completado — ${maxIter} iteraciones`;
+  btn.disabled=false;
+  btn.textContent='▶  Ejecutar simulación';
+  simulando=false;
+  redrawCurrent();
+}
+
+// ════════════════════════════════════════════════
+// REPRODUCTOR
+// ════════════════════════════════════════════════
+function playerGo(idx){
+  if(!snapshots.length) return;
+  playerIdx=Math.max(0,Math.min(idx,snapshots.length-1));
+  document.getElementById('player-range').value=playerIdx;
+  updatePLabels();
+  const s=snapshots[playerIdx];
+  drawScene(s.bestRuta,s.tau,tabActual==='agentes'?s.agentPaths:null);
+  drawChart(historial.slice(0,playerIdx+1));
+  document.getElementById('m-cost').textContent=s.bestCost.toFixed(1);
+  document.getElementById('iter-label').textContent=`Iteración ${s.iter} / ${snapshots.length}`;
+}
+function playerStep(d){ playerGo(playerIdx+d); }
+function playerToggle(){
+  if(playerPlaying){ playerPause(); return; }
+  if(playerIdx>=snapshots.length-1) playerIdx=0;
+  playerPlaying=true;
+  document.getElementById('p-play').className='pbtn playing';
+  document.getElementById('p-play').textContent='⏸';
+  playerNext();
+}
+function playerNext(){
+  if(!playerPlaying) return;
+  if(playerIdx>=snapshots.length-1){ playerPause(); return; }
+  playerStep(1);
+  playerTimer=setTimeout(playerNext,playerSpeed);
+}
+function playerPause(){
+  playerPlaying=false;
+  clearTimeout(playerTimer);
+  document.getElementById('p-play').className='pbtn';
+  document.getElementById('p-play').textContent='▶';
+}
+function updatePLabels(){
+  document.getElementById('pl-cur').textContent=snapshots.length?`Iter. ${playerIdx+1}`:'—';
+  document.getElementById('pl-total').textContent=snapshots.length?`de ${snapshots.length}`:'—';
+}
+function setPlayerEnabled(en){
+  ['p-first','p-prev','p-play','p-next','p-last'].forEach(id=>{document.getElementById(id).disabled=!en;});
+}
+function setSpeed(ms,btn){
+  playerSpeed=ms;
+  document.querySelectorAll('.spd').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(playerPlaying){
+    clearTimeout(playerTimer);
+    playerNext();
+  }
+}
+
+// ════════════════════════════════════════════════
+// GRÁFICO CONVERGENCIA
+// ════════════════════════════════════════════════
+function drawChart(data){
+  const cvs=document.getElementById('canvas-chart');
+  const ctx=cvs.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  cvs.width=cvs.offsetWidth*dpr;
+  cvs.height=cvs.offsetHeight*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W=cvs.offsetWidth,H=cvs.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  if(data.length<2) return;
+
+  const p={t:5,r:5,b:16,l:30};
+  const w=W-p.l-p.r,h=H-p.t-p.b;
+  const mn=Math.min(...data)*.95,mx=Math.max(data[0]*1.02,mn+1);
+
+  ctx.strokeStyle='rgba(255,255,255,.04)';
+  ctx.lineWidth=.5;
+  for(let i=0;i<=3;i++){
+    const y=p.t+h*(i/3);
+    ctx.beginPath();
+    ctx.moveTo(p.l,y);
+    ctx.lineTo(p.l+w,y);
+    ctx.stroke();
+    ctx.fillStyle='rgba(123,128,153,.6)';
+    ctx.font='7px monospace';
+    ctx.textAlign='right';
+    ctx.fillText((mx-(mx-mn)*(i/3)).toFixed(0),p.l-2,y+3);
+  }
+
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=p.l+w*(i/(data.length-1));
+    const y=p.t+h*(1-(v-mn)/(mx-mn));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#3ecf8e';
+  ctx.lineWidth=1.4;
+  ctx.stroke();
+
+  if(snapshots.length && playerIdx<data.length){
+    const xi=p.l+w*(playerIdx/Math.max(1,snapshots.length-1));
+    const yi=p.t+h*(1-(data[playerIdx]-mn)/(mx-mn));
+    ctx.beginPath();
+    ctx.arc(xi,yi,3.5,0,Math.PI*2);
+    ctx.fillStyle='#3ecf8e';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(xi,p.t);
+    ctx.lineTo(xi,p.t+h);
+    ctx.strokeStyle='rgba(62,207,142,.25)';
+    ctx.lineWidth=.8;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle='rgba(123,128,153,.6)';
+  ctx.font='7px monospace';
+  ctx.textAlign='center';
+  [0,Math.floor(data.length/2),data.length-1].forEach(i=>{
+    ctx.fillText(String(i+1),p.l+w*(i/(data.length-1)),p.t+h+12);
+  });
+}
+
+// ════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════
+function switchTab(t,btn){
+  tabActual=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  redrawCurrent();
+}
+function log(msg,type=''){
+  const box=document.getElementById('log-box');
+  const sp=document.createElement('span');
+  if(type) sp.className='log-'+type;
+  sp.textContent=msg;
+  box.appendChild(sp);
+  box.scrollTop=box.scrollHeight;
+}
+function resetAll(silent){
+  playerPause();
+  resultados=null;
+  historial=[];
+  snapshots=[];
+  playerIdx=0;
+  setPlayerEnabled(false);
+  document.getElementById('player-range').value=0;
+  document.getElementById('player-range').max=0;
+  updatePLabels();
+  ['m-cost','m-dist','m-cov','m-imp','m-vuln'].forEach(id=>document.getElementById(id).textContent='—');
+  ['pb-cov','pb-vuln'].forEach(id=>document.getElementById(id).style.width='0%');
+  document.getElementById('route-nodes').innerHTML='<span style="color:var(--muted);font-size:11px;">Ejecuta la simulación para ver la ruta.</span>';
+  document.getElementById('iter-label').textContent='Listo para simular';
+  document.getElementById('status-dot').className='status-dot';
+  document.getElementById('canvas-chart').getContext('2d').clearRect(0,0,9999,9999);
+  if(!silent){
+    document.getElementById('log-box').innerHTML='<span class="log-info">Sistema restablecido.</span>';
+  }
+  redrawCurrent();
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+setPlayerEnabled(false);
+setTimeout(()=>{ resize(); generarMapa(); },180);
+</script>
+
+</body>
+</html>
